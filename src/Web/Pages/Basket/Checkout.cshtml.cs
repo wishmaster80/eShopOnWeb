@@ -1,4 +1,7 @@
-﻿using Ardalis.GuardClauses;
+﻿using System.Security.Policy;
+using System.Text.Json.Nodes;
+using System.Text;
+using Ardalis.GuardClauses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -56,6 +59,8 @@ public class CheckoutModel : PageModel
             await _basketService.SetQuantities(BasketModel.Id, updateModel);
             await _orderService.CreateOrderAsync(BasketModel.Id, new Address("123 Main St.", "Kent", "OH", "United States", "44240"));
             await _basketService.DeleteBasketAsync(BasketModel.Id);
+
+            await StoreOrderInBlob(BasketModel);
         }
         catch (EmptyBasketOnCheckoutException emptyBasketOnCheckoutException)
         {
@@ -65,6 +70,14 @@ public class CheckoutModel : PageModel
         }
 
         return RedirectToPage("Success");
+    }
+
+    private async Task StoreOrderInBlob(BasketViewModel basketModel)
+    {
+        using var httpClient = new HttpClient();
+        var content = new StringContent(basketModel.ToJson(), Encoding.UTF8, "application/json");
+        var r = await httpClient.PostAsync("https://functionapp20231218101211.azurewebsites.net/api/OrderItemsReserver?code=9zN4VekJC9k05Sw-ADPNAfLNfmEtjBIKe8UY82rA1pS8AzFuk5Giow==", content);
+        var c = await r.Content.ReadAsStringAsync();
     }
 
     private async Task SetBasketModelAsync()
