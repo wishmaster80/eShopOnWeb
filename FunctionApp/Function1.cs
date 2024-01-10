@@ -15,6 +15,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Data.SqlClient;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using static System.Net.WebRequestMethods;
 
 namespace FunctionApp
 {
@@ -22,7 +25,8 @@ namespace FunctionApp
     {
         private static string _blobConnectionString = "DefaultEndpointsProtocol=https;AccountName=ordersadamstorage;AccountKey=D9Uehfk2FBZXmAzz/7arVDti2ucspQr8nVI+NBukuhUfmijbulKUM6tkAvSgg6rUIHoeIM9YOIbu+ASt41SStA==;EndpointSuffix=core.windows.net";
         private static BlobContainerClient _containerClient;
-        private static string _dbConnectionString = "Server=tcp:sql-catalog-dmdwiiamjnm7k.database.windows.net,1433;Initial Catalog=AdamDB;Persist Security Info=False;User ID=sqlAdmin;Password=qwer1222!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
+        private static string _dbConnectionString;//= "Server=tcp:sql-catalog-dmdwiiamjnm7k.database.windows.net,1433;Initial Catalog=AdamDB;Persist Security Info=False;User ID=sqlAdmin;Password=qwer1222!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
+        private static string secretName = "dbConnectionString";
 
         //private static string _connectionString = "DefaultEndpointsProtocol=https;AccountName=functionapp2023121810121;AccountKey=CltTwYwj5ewgtpl6o8LjEa2NH7DSiStYuBxkhkHgiQzDeidU0Edk61tjqE80YzVOd0RfEZnTxz9L+AStb7oafg==;EndpointSuffix=core.windows.net";
         public static void Initialize()
@@ -30,8 +34,18 @@ namespace FunctionApp
             List<string> names = new List<string>();
             BlobServiceClient blobServiceClient = new BlobServiceClient(_blobConnectionString);
             _containerClient = blobServiceClient.GetBlobContainerClient("orders");
+
         }
 
+        private async static Task SetConnectionString()
+        {
+            string keyVaultName = "SecretPassword";
+            var kvUri = "https://" + keyVaultName + ".vault.azure.net";
+
+            var client = new SecretClient(new Uri(kvUri), new DefaultAzureCredential());
+            ;
+            _dbConnectionString = (await client.GetSecretAsync("dbConnectionString")).Value.Value;
+        }
 
         public static async Task<IEnumerable<string>> GetNames()
         {
@@ -79,6 +93,7 @@ namespace FunctionApp
         [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
         ILogger log)
         {
+            await SetConnectionString();
             //var x = (await GetNames()).ToList();
             log.LogInformation("C# HTTP trigger function processed a request.");
 
