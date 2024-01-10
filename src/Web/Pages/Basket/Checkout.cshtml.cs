@@ -11,6 +11,7 @@ using Microsoft.eShopWeb.ApplicationCore.Exceptions;
 using Microsoft.eShopWeb.ApplicationCore.Interfaces;
 using Microsoft.eShopWeb.Infrastructure.Identity;
 using Microsoft.eShopWeb.Web.Interfaces;
+using FunctionApp;
 
 namespace Microsoft.eShopWeb.Web.Pages.Basket;
 
@@ -57,10 +58,19 @@ public class CheckoutModel : PageModel
 
             var updateModel = items.ToDictionary(b => b.Id.ToString(), b => b.Quantity);
             await _basketService.SetQuantities(BasketModel.Id, updateModel);
-            await _orderService.CreateOrderAsync(BasketModel.Id, new Address("123 Main St.", "Kent", "OH", "United States", "44240"));
+            var order  = await _orderService.CreateOrderAsync(BasketModel.Id, new Address("123 Main St.", "Kent", "OH", "United States", "44240"));
             await _basketService.DeleteBasketAsync(BasketModel.Id);
+            
+            var sa = order.ShipToAddress;
 
-            await StoreOrderInBlob(BasketModel);
+            var message  = await StoreOrderInBlob(new OrderInfo
+            {
+                Id = order.Id,
+                ShippingAddress = $"{sa.Street} {sa.ZipCode} {sa.City} {sa.State} {sa.Country}",
+                ListOfItems = String.Join(" - ", BasketModel.Items.Select(i => i.ProductName)),
+                Total = order.Total()
+            } );
+            return RedirectToPage();
         }
         catch (EmptyBasketOnCheckoutException emptyBasketOnCheckoutException)
         {
@@ -72,12 +82,14 @@ public class CheckoutModel : PageModel
         return RedirectToPage("Success");
     }
 
-    private async Task StoreOrderInBlob(BasketViewModel basketModel)
+    private async Task<string> StoreOrderInBlob(OrderInfo oi)
     {
         using var httpClient = new HttpClient();
-        var content = new StringContent(basketModel.ToJson(), Encoding.UTF8, "application/json");
-        var r = await httpClient.PostAsync("https://functionapp20231218101211.azurewebsites.net/api/OrderItemsReserver?code=9zN4VekJC9k05Sw-ADPNAfLNfmEtjBIKe8UY82rA1pS8AzFuk5Giow==", content);
+        var content = new StringContent(oi.ToJson(), Encoding.UTF8, "application/json");
+        var r = await httpClient.PostAsync(" http://localhost:7071/api/OrderItemsReserver", content);
+        //var r = await httpClient.PostAsync("https://functionapp20231218101211.azurewebsites.net/api/OrderItemsReserver?code=9zN4VekJC9k05Sw-ADPNAfLNfmEtjBIKe8UY82rA1pS8AzFuk5Giow==", content);
         var c = await r.Content.ReadAsStringAsync();
+        return c;
     }
 
     private async Task SetBasketModelAsync()

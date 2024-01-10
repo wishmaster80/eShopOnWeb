@@ -9,6 +9,7 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Core" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" />
     <PackageReference Include="System.Linq.Expressions" />
